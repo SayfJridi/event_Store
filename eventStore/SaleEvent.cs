@@ -8,7 +8,7 @@ using EventStore.Client;
 
 namespace eventStore
 {
-    public class SaleUpdated
+    public class SaleUpdated : IEvent
     {
         public Sale UpdatedFields { get; set; }
 
@@ -18,7 +18,7 @@ namespace eventStore
 
         } = "Update"; 
     }
-    public class SaleDeleted
+    public class SaleDeleted : IEvent
     {
         DateTime DeletedDate = DateTime.Now; 
 
@@ -27,7 +27,7 @@ namespace eventStore
             get;
         } = "Delete"; 
     }
-    public class SaleCreated
+    public class SaleCreated : IEvent
     {
         public Sale CreationFields { get; set; }
 

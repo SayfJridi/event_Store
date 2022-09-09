@@ -23,99 +23,44 @@ namespace eventStore
 {
     public class Service : IService
     {
-        public static EventStoreClientSettings settings = EventStoreClientSettings.Create("esdb://127.0.0.1:2113?tls=false&keepAliveTimeout=10000&keepAliveInterval=10000");
-        EventStoreClient client = new EventStoreClient(settings);
 
+        private readonly IRepository<Sale> _saleRepository;
 
+       public Service(IRepository<Sale> saleRepository)
+        {
+            this._saleRepository = saleRepository;
+        }
         public async void AddSale(string productName, int quantity, decimal price)
         {
-            var sale = new Sale(){Id= Guid.NewGuid(), ProductName = productName, Quantity = quantity ,Price = price };
-            var evt = new SaleCreated() { CreationFields = sale}; 
-            var eventData = new EventData(
-                Uuid.NewUuid(),
-                evt.Type,
-                Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(evt))
-            );
-            await client.AppendToStreamAsync(
-                $"sales-{sale.Id}",
-                StreamState.Any,
-                new List<EventData> {
-                    eventData
-                });
+
+            
         }
 
 
         public  async void UpdateSale(string id,string productName , int quantity,decimal price)
         {
-            var sale = await GetSale(id);
-            if (sale.Deleted == true)
-            {
-                Console.WriteLine("Not Found Sale");
-            }
-
-            sale.ProductName = productName; 
+            var sale = await this._saleRepository.GetById(id); 
+            sale.ProductName = productName;
             sale.Quantity = quantity;
             sale.Price = price;
-            var evt = new SaleUpdated() { UpdatedFields = sale };
-            var eventData = new EventData(
-                Uuid.NewUuid(),
-                evt.Type,
-                Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(evt))
-            );
-            await client.AppendToStreamAsync(
-                $"sales-{sale.Id}",
-                StreamState.Any,
-                new List<EventData> {
-                    eventData
-                });
-          
+            this._saleRepository.Update(id, sale); 
+
+
 
 
         }
 
         public async Task<Sale> GetSale(string id)
         {
-           
-                var result = client.ReadStreamAsync(
-                    Direction.Forwards,
-                    $"sales-{id}",
-                    StreamPosition.Start);
-                var sale = new Sale();
-                if (await result.ReadState == ReadState.StreamNotFound)
-                {
-                    throw new FileNotFoundException($"Sale With Id {id}"); 
-                } 
-
-                var events = await result.ToListAsync(); 
-                sale = Sale.ApplyEvents(events);
-                return sale; 
-                
-
-
-            
-           
-
+            var sale = await  this._saleRepository.GetById(id);
+                return sale;
         }
 
 
         public async Task<List<Sale>> GetSales()
         {
-            var results = client.ReadAllAsync(
-                Direction.Forwards, Position.Start);
-             
-            var events = await results.ToListAsync();
-            List<Sale> sales = new List<Sale>();
 
-            events = events.FindAll(e => e.Event.EventStreamId.StartsWith("sales-"));
-
-            var eventsGrouped = events.GroupBy(evt => evt.Event.EventStreamId);
-
-            foreach (var Events in eventsGrouped)
-            {
-                var sale = Sale.ApplyEvents(Events.ToList()); 
-                if(sale.Deleted == false)
-                  sales.Add(sale); 
-            }
+            var sales = await this._saleRepository.Get(); 
 
             return sales;
 
@@ -147,25 +92,9 @@ namespace eventStore
         public async void DeleteSale(string id)
         {
 
-            var sale = await this.GetSale(id);
+            var sale = await this._saleRepository.DeleteById(id);
          
            
-            if (sale.Deleted == true ||     sale == new Sale())
-            {
-                return;
-            }
-            var evt = new SaleDeleted();
-            var eventData = new EventData(
-                Uuid.NewUuid(),
-                evt.Type,
-                Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(evt))
-            );
-            await client.AppendToStreamAsync(
-                $"sales-{sale.Id}",
-                StreamState.Any,
-                new List<EventData> {
-                    eventData
-                });
 
         }
          

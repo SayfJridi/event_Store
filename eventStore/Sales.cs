@@ -1,4 +1,6 @@
 ﻿
+using EventStore.Client;
+
 namespace eventStore
 {
     using System;
@@ -75,10 +77,7 @@ namespace eventStore
         }
         public static Sale ApplyEvent(SaleDeleted @event ,  Sale sale)
         {
-            if (sale.Deleted == true)
-            {
-                throw new Exception("Sale Already Deleted"); 
-            }
+            
             sale.Deleted = true;
             return sale;
         }
